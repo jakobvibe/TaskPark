@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Service\MessageService;
 use App\Service\TaskService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -11,6 +12,7 @@ class DashboardController extends AbstractController
 {
     public function __construct(
         private TaskService $taskService,
+        private MessageService $messageService,
     ) {
     }
 
@@ -45,11 +47,25 @@ class DashboardController extends AbstractController
         $user = $this->getUser();
         $tasksByDate = $this->taskService->getTasksForWeek($user, $monday);
 
+        // Count total pending tasks for contextual messaging
+        $totalTasks = 0;
+        foreach ($tasksByDate as $tasks) {
+            foreach ($tasks as $task) {
+                if (!$task->isCompleted()) {
+                    $totalTasks++;
+                }
+            }
+        }
+
+        // Get supportive message
+        $supportiveMessage = $this->messageService->getContextualMessage($totalTasks);
+
         return $this->render('dashboard/index.html.twig', [
             'weekDates' => $weekDates,
             'tasksByDate' => $tasksByDate,
             'currentDate' => $currentDate,
             'today' => new \DateTime(),
+            'supportiveMessage' => $supportiveMessage,
         ]);
     }
 }
