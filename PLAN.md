@@ -67,7 +67,8 @@ A stress-reduction task management web app organized by weekdays.
 |--------|------|-------------|
 | id | INT (PK) | Auto-increment |
 | email | VARCHAR(180) | Unique, from OAuth |
-| google_id | VARCHAR(255) | Google OAuth identifier |
+| oauth_provider | VARCHAR(50) | 'github', 'google', 'auth0', etc. |
+| oauth_id | VARCHAR(255) | Provider's user identifier |
 | name | VARCHAR(255) | Display name |
 | avatar_url | VARCHAR(500) | Profile picture URL |
 | roles | JSON | User roles |
@@ -81,11 +82,13 @@ A stress-reduction task management web app organized by weekdays.
 | user_id | INT (FK) | Owner of the task |
 | title | VARCHAR(255) | Task description |
 | scheduled_date | DATE | Which day the task is on |
-| position | INT | Order within the day |
-| status | ENUM | 'pending', 'completed' |
-| completed_at | DATETIME | When marked complete |
+| position | INT | Order within the day (for drag-drop) |
+| is_completed | BOOLEAN | Completion status |
+| completed_at | DATETIME | When marked complete (for 30-day archive) |
 | created_at | DATETIME | Creation timestamp |
-| updated_at | DATETIME | Last modification |
+
+#### `archived_task`
+Same structure as `task` - stores tasks completed > 30 days ago.
 
 #### `supportive_message`
 | Column | Type | Description |
@@ -374,18 +377,34 @@ npm run watch
 
 ---
 
-## Questions Before Implementation
+## Design Decisions (Confirmed)
 
-1. **Google OAuth:** Do you have a Google Cloud project set up, or should I include Docker-based local testing without SSO first?
-
-2. **Task details:** Should tasks have any additional fields? (priority, notes, color labels, estimated time?)
-
-3. **Week start:** Should weeks start on Monday (ISO) or Sunday?
-
-4. **Completed tasks:** Hide them, show crossed out, or move to bottom of day?
-
-5. **Data retention:** Keep completed tasks forever or auto-archive after X days?
+| Decision | Choice |
+|----------|--------|
+| **SSO Provider** | TBD (GitHub OAuth or Auth0 recommended) |
+| **Task fields** | Title only (for now) |
+| **Week start** | Monday (ISO standard) |
+| **Completed tasks** | Show with strikethrough |
+| **Data retention** | Auto-archive after 30 days |
 
 ---
 
-Ready to start implementation when you approve this plan!
+## Auto-Archive Implementation
+
+A Symfony console command will run daily to archive old completed tasks:
+
+```php
+// src/Command/ArchiveCompletedTasksCommand.php
+#[AsCommand(name: 'app:archive-tasks')]
+class ArchiveCompletedTasksCommand extends Command
+{
+    // Archives tasks completed > 30 days ago
+    // Can be run via cron: 0 2 * * * php bin/console app:archive-tasks
+}
+```
+
+Archived tasks move to an `archived_task` table (same structure) for potential recovery.
+
+---
+
+Ready to start implementation when SSO choice is confirmed!
