@@ -2,16 +2,22 @@
 
 namespace App\Controller;
 
+use App\Service\TaskService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 class DashboardController extends AbstractController
 {
+    public function __construct(
+        private TaskService $taskService,
+    ) {
+    }
+
     #[Route('/', name: 'app_dashboard')]
     public function index(): Response
     {
-        // For now, redirect to the current week
+        // Redirect to the current week
         $today = new \DateTime();
         return $this->redirectToRoute('app_week', [
             'date' => $today->format('Y-m-d'),
@@ -35,8 +41,13 @@ class DashboardController extends AbstractController
             $weekDates[] = $day;
         }
 
+        // Get tasks for the week
+        $user = $this->getUser();
+        $tasksByDate = $this->taskService->getTasksForWeek($user, $monday);
+
         return $this->render('dashboard/index.html.twig', [
             'weekDates' => $weekDates,
+            'tasksByDate' => $tasksByDate,
             'currentDate' => $currentDate,
             'today' => new \DateTime(),
         ]);

@@ -1,0 +1,45 @@
+{# Single task item with Turbo Frame #}
+<turbo-frame id="task-{{ task.id }}">
+    <div class="group flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 transition-colors {% if task.isCompleted %}opacity-60{% endif %}"
+         data-controller="task"
+         data-task-id-value="{{ task.id }}">
+
+        {# Completion checkbox #}
+        <form action="{{ path('app_task_complete', {id: task.id}) }}" method="post" class="flex-shrink-0">
+            <input type="hidden" name="_method" value="PATCH">
+            <button type="submit"
+                    class="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
+                           {% if task.isCompleted %}
+                               bg-success border-success text-white
+                           {% else %}
+                               border-slate-300 hover:border-primary
+                           {% endif %}">
+                {% if task.isCompleted %}
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                {% endif %}
+            </button>
+        </form>
+
+        {# Task title #}
+        <span class="flex-1 text-sm {% if task.isCompleted %}line-through text-text-light{% else %}text-text{% endif %}"
+              data-task-target="title">
+            {{ task.title }}
+        </span>
+
+        {# Delete button (shows on hover) #}
+        <form action="{{ path('app_task_delete', {id: task.id}) }}" method="post"
+              class="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+              onsubmit="return confirm('Delete this task?')">
+            <input type="hidden" name="_method" value="DELETE">
+            <input type="hidden" name="confirm_delete" value="1">
+            <button type="submit"
+                    class="p-1 text-text-light hover:text-danger rounded transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </form>
+    </div>
+</turbo-frame>

@@ -1,0 +1,51 @@
+{# All tasks for a specific day - used as Turbo Frame target #}
+{% set dateKey = date|date('Y-m-d') %}
+{% set isToday = date|date('Y-m-d') == today|date('Y-m-d') %}
+
+<turbo-frame id="day-{{ dateKey }}">
+    <div class="space-y-1">
+        {% if tasks is defined and tasks|length > 0 %}
+            {% for task in tasks %}
+                {{ include('task/_task.html.twig', {task: task}) }}
+            {% endfor %}
+        {% else %}
+            <p class="text-sm text-text-light text-center py-4">
+                No tasks yet
+            </p>
+        {% endif %}
+    </div>
+
+    {# Add task form #}
+    <form action="{{ path('app_task_create') }}" method="post" class="mt-3"
+          data-controller="add-task"
+          data-turbo-frame="day-{{ dateKey }}">
+        <input type="hidden" name="date" value="{{ dateKey }}">
+
+        <div data-add-task-target="form" class="hidden">
+            <input type="text"
+                   name="title"
+                   placeholder="New task..."
+                   class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                   data-add-task-target="input"
+                   data-action="keydown.escape->add-task#cancel">
+            <div class="flex gap-2 mt-2">
+                <button type="submit"
+                        class="flex-1 py-1.5 text-xs bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
+                    Add
+                </button>
+                <button type="button"
+                        class="flex-1 py-1.5 text-xs text-text-light hover:text-text rounded-lg border border-slate-300 hover:bg-slate-50 transition-colors"
+                        data-action="add-task#cancel">
+                    Cancel
+                </button>
+            </div>
+        </div>
+
+        <button type="button"
+                data-add-task-target="trigger"
+                data-action="add-task#show"
+                class="w-full py-2 text-sm text-text-light hover:text-primary hover:bg-slate-50 rounded-lg border border-dashed border-slate-300 hover:border-primary transition-colors">
+            + Add task
+        </button>
+    </form>
+</turbo-frame>

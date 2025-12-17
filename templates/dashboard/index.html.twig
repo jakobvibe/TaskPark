@@ -41,9 +41,12 @@
     </div>
 
     {# Week grid #}
-    <div class="grid grid-cols-7 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
         {% for date in weekDates %}
-            {% set isToday = date|date('Y-m-d') == today|date('Y-m-d') %}
+            {% set dateKey = date|date('Y-m-d') %}
+            {% set isToday = dateKey == today|date('Y-m-d') %}
+            {% set dayTasks = tasksByDate[dateKey] ?? [] %}
+
             <div class="bg-surface rounded-xl shadow-sm border {% if isToday %}border-primary border-2{% else %}border-slate-200{% endif %} p-4 min-h-[300px] flex flex-col">
                 {# Day header #}
                 <div class="text-center mb-4 pb-3 border-b border-slate-100">
@@ -55,20 +58,14 @@
                     </div>
                 </div>
 
-                {# Tasks area (placeholder for now) #}
-                <div class="flex-1 space-y-2">
-                    <p class="text-sm text-text-light text-center py-4">
-                        No tasks yet
-                    </p>
+                {# Tasks area with Turbo Frame #}
+                <div class="flex-1">
+                    {{ include('task/_day_tasks.html.twig', {
+                        date: date,
+                        tasks: dayTasks,
+                        today: today
+                    }) }}
                 </div>
-
-                {# Add task button #}
-                <button
-                    class="mt-auto w-full py-2 text-sm text-text-light hover:text-primary hover:bg-slate-50 rounded-lg border border-dashed border-slate-300 hover:border-primary transition-colors"
-                    disabled
-                >
-                    + Add task
-                </button>
             </div>
         {% endfor %}
     </div>
