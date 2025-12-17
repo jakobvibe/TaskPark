@@ -1,0 +1,64 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Login - TaskPark{% endblock %}
+
+{% block nav_right %}{% endblock %}
+
+{% block body %}
+<div class="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-12">
+    <div class="max-w-md w-full space-y-8">
+        {# Logo and welcome #}
+        <div class="text-center">
+            <span class="text-6xl">🌿</span>
+            <h1 class="mt-4 text-3xl font-bold text-text">Welcome to TaskPark</h1>
+            <p class="mt-2 text-text-light">Your stress-free task companion</p>
+        </div>
+
+        {# Login form #}
+        <div class="bg-surface rounded-xl shadow-lg p-8">
+            <h2 class="text-xl font-semibold text-text mb-6">Sign in with email</h2>
+
+            {% if error %}
+                <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+                    {{ error.messageKey|trans(error.messageData, 'security') }}
+                </div>
+            {% endif %}
+
+            <form method="post" class="space-y-6">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-text mb-2">
+                        Email address
+                    </label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        required
+                        autofocus
+                        placeholder="you@example.com"
+                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    >
+                </div>
+
+                <button
+                    type="submit"
+                    class="w-full bg-primary hover:bg-primary-dark text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                >
+                    Send magic link
+                </button>
+            </form>
+
+            <p class="mt-6 text-center text-sm text-text-light">
+                We'll send you a secure link to sign in. No password needed!
+            </p>
+        </div>
+
+        {# Features preview #}
+        <div class="text-center space-y-2 text-sm text-text-light">
+            <p>Organize tasks by weekday</p>
+            <p>Reduce stress, not productivity</p>
+            <p>Take it one task at a time</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

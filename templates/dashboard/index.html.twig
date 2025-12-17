@@ -1,0 +1,76 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard - TaskPark{% endblock %}
+
+{% block body %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {# Supportive message #}
+    <div class="text-center mb-8">
+        <p class="text-lg text-text-light italic">
+            "Take it one task at a time. You've got this!"
+        </p>
+    </div>
+
+    {# Week navigation #}
+    <div class="flex items-center justify-center gap-4 mb-8">
+        {% set prevWeek = weekDates[0]|date_modify('-7 days') %}
+        {% set nextWeek = weekDates[0]|date_modify('+7 days') %}
+
+        <a href="{{ path('app_week', {date: prevWeek|date('Y-m-d')}) }}"
+           class="btn px-4 py-2 text-text-light hover:text-primary hover:bg-slate-100 rounded-lg">
+            &larr; Previous
+        </a>
+
+        <div class="text-center">
+            <h1 class="text-xl font-semibold text-text">
+                Week of {{ weekDates[0]|date('M j') }} - {{ weekDates[6]|date('M j, Y') }}
+            </h1>
+        </div>
+
+        <a href="{{ path('app_week', {date: nextWeek|date('Y-m-d')}) }}"
+           class="btn px-4 py-2 text-text-light hover:text-primary hover:bg-slate-100 rounded-lg">
+            Next &rarr;
+        </a>
+
+        {% if weekDates[0]|date('W') != today|date('W') or weekDates[0]|date('Y') != today|date('Y') %}
+            <a href="{{ path('app_dashboard') }}"
+               class="btn px-4 py-2 bg-primary text-white hover:bg-primary-dark rounded-lg ml-4">
+                Today
+            </a>
+        {% endif %}
+    </div>
+
+    {# Week grid #}
+    <div class="grid grid-cols-7 gap-4">
+        {% for date in weekDates %}
+            {% set isToday = date|date('Y-m-d') == today|date('Y-m-d') %}
+            <div class="bg-surface rounded-xl shadow-sm border {% if isToday %}border-primary border-2{% else %}border-slate-200{% endif %} p-4 min-h-[300px] flex flex-col">
+                {# Day header #}
+                <div class="text-center mb-4 pb-3 border-b border-slate-100">
+                    <div class="text-sm font-medium {% if isToday %}text-primary{% else %}text-text-light{% endif %}">
+                        {{ date|date('D') }}
+                    </div>
+                    <div class="text-lg font-semibold {% if isToday %}text-primary{% else %}text-text{% endif %}">
+                        {{ date|date('j') }}
+                    </div>
+                </div>
+
+                {# Tasks area (placeholder for now) #}
+                <div class="flex-1 space-y-2">
+                    <p class="text-sm text-text-light text-center py-4">
+                        No tasks yet
+                    </p>
+                </div>
+
+                {# Add task button #}
+                <button
+                    class="mt-auto w-full py-2 text-sm text-text-light hover:text-primary hover:bg-slate-50 rounded-lg border border-dashed border-slate-300 hover:border-primary transition-colors"
+                    disabled
+                >
+                    + Add task
+                </button>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
