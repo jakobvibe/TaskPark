@@ -19,7 +19,7 @@ A stress-reduction task management web app organized by weekdays.
 ┌─────────────────────────────────────────────────────────────┐
 │                    Symfony 7 Backend                        │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │ Controllers │  │  Services   │  │ Security (OAuth2)   │  │
+│  │ Controllers │  │  Services   │  │ Security (MagicLink) │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘  │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
 │  │  Entities   │  │   Repos     │  │ Doctrine ORM        │  │
@@ -41,7 +41,8 @@ A stress-reduction task management web app organized by weekdays.
 - **Framework:** Symfony 7.x (latest LTS)
 - **PHP Version:** 8.2+
 - **ORM:** Doctrine
-- **Authentication:** KnpUOAuth2ClientBundle (Google SSO)
+- **Authentication:** Magic Link (passwordless email login)
+- **Email:** Symfony Mailer (with Mailpit for local dev)
 
 ### Frontend
 - **Templating:** Twig
@@ -66,14 +67,22 @@ A stress-reduction task management web app organized by weekdays.
 | Column | Type | Description |
 |--------|------|-------------|
 | id | INT (PK) | Auto-increment |
-| email | VARCHAR(180) | Unique, from OAuth |
-| oauth_provider | VARCHAR(50) | 'github', 'google', 'auth0', etc. |
-| oauth_id | VARCHAR(255) | Provider's user identifier |
-| name | VARCHAR(255) | Display name |
-| avatar_url | VARCHAR(500) | Profile picture URL |
+| email | VARCHAR(180) | Unique, user's email |
+| name | VARCHAR(255) | Display name (from email or user-set) |
 | roles | JSON | User roles |
+| is_verified | BOOLEAN | Email verified via magic link |
 | created_at | DATETIME | Registration timestamp |
 | last_login_at | DATETIME | Last login timestamp |
+
+#### `login_token`
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INT (PK) | Auto-increment |
+| user_id | INT (FK) | Associated user |
+| token | VARCHAR(64) | Secure random token (hashed) |
+| expires_at | DATETIME | Token expiration (15 min) |
+| used_at | DATETIME | When token was used (null if unused) |
+| created_at | DATETIME | Creation timestamp |
 
 #### `task`
 | Column | Type | Description |
@@ -102,25 +111,34 @@ Same structure as `task` - stores tasks completed > 30 days ago.
 
 ## 4. Core Features Breakdown
 
-### 4.1 Authentication Flow
+### 4.1 Authentication Flow (Magic Link)
 ```
-User clicks "Sign in with Google"
+User enters email on login page
         │
         ▼
-Redirect to Google OAuth consent screen
+System creates/finds user + generates token
         │
         ▼
-Google redirects back with auth code
+Email sent with magic link: /login/verify/{token}
         │
         ▼
-Symfony exchanges code for user info
+User clicks link in email
         │
         ▼
-Create/update user in database
+System validates token (not expired, not used)
+        │
+        ▼
+Mark token as used, log user in
         │
         ▼
 Redirect to dashboard with session
 ```
+
+**Security features:**
+- Tokens expire after 15 minutes
+- Tokens are single-use (marked used after login)
+- Token stored as hash in DB (like passwords)
+- Rate limiting on login requests
 
 ### 4.2 Week View
 - Display Monday through Sunday
@@ -161,7 +179,7 @@ TaskPark/
 │   ├── packages/
 │   │   ├── doctrine.yaml
 │   │   ├── security.yaml
-│   │   ├── knpu_oauth2_client.yaml
+│   │   ├── mailer.yaml
 │   │   └── webpack_encore.yaml
 │   └── routes.yaml
 ├── migrations/
@@ -170,21 +188,23 @@ TaskPark/
 │   ├── Controller/
 │   │   ├── DashboardController.php
 │   │   ├── TaskController.php
-│   │   ├── SecurityController.php
-│   │   └── GoogleController.php
+│   │   └── SecurityController.php
 │   ├── Entity/
 │   │   ├── User.php
+│   │   ├── LoginToken.php
 │   │   ├── Task.php
 │   │   └── SupportiveMessage.php
 │   ├── Repository/
 │   │   ├── UserRepository.php
+│   │   ├── LoginTokenRepository.php
 │   │   ├── TaskRepository.php
 │   │   └── SupportiveMessageRepository.php
 │   ├── Service/
+│   │   ├── MagicLinkService.php
 │   │   ├── TaskService.php
 │   │   └── MessageService.php
 │   └── Security/
-│       └── GoogleAuthenticator.php
+│       └── MagicLinkAuthenticator.php
 ├── templates/
 │   ├── base.html.twig
 │   ├── dashboard/
@@ -194,8 +214,11 @@ TaskPark/
 │   │   ├── day_column.html.twig
 │   │   ├── task_card.html.twig
 │   │   └── supportive_message.html.twig
-│   └── security/
-│       └── login.html.twig
+│   ├── security/
+│   │   ├── login.html.twig
+│   │   └── check_email.html.twig
+│   └── emails/
+│       └── magic_link.html.twig
 ├── .env
 ├── composer.json
 ├── package.json
@@ -212,9 +235,10 @@ TaskPark/
 |--------|-------|------------|-------------|
 | GET | `/` | DashboardController::index | Redirect to current week |
 | GET | `/week/{date}` | DashboardController::week | Show week view |
-| GET | `/login` | SecurityController::login | Login page |
-| GET | `/connect/google` | GoogleController::connect | Start OAuth |
-| GET | `/connect/google/check` | GoogleController::check | OAuth callback |
+| GET | `/login` | SecurityController::login | Login page (enter email) |
+| POST | `/login` | SecurityController::sendMagicLink | Send magic link email |
+| GET | `/login/check-email` | SecurityController::checkEmail | "Check your email" page |
+| GET | `/login/verify/{token}` | SecurityController::verify | Verify token & login |
 | POST | `/logout` | SecurityController::logout | End session |
 | POST | `/task` | TaskController::create | Create task (Turbo Frame) |
 | PATCH | `/task/{id}` | TaskController::update | Update task |
@@ -269,14 +293,16 @@ TaskPark/
 - [ ] Set up Webpack Encore + Tailwind
 - [ ] Install Symfony UX (Stimulus, Turbo)
 - [ ] Create base layout template
-- [ ] Set up Docker Compose for local DB
+- [ ] Set up Docker Compose for local DB + Mailpit
 
-### Phase 2: Authentication
-- [ ] Install KnpUOAuth2ClientBundle
-- [ ] Configure Google OAuth2 credentials
-- [ ] Create User entity with Google fields
-- [ ] Build GoogleAuthenticator
-- [ ] Create login/logout pages
+### Phase 2: Authentication (Magic Link)
+- [ ] Install Symfony Mailer
+- [ ] Create User + LoginToken entities
+- [ ] Build MagicLinkService (token generation, validation)
+- [ ] Build MagicLinkAuthenticator
+- [ ] Create login page (email input form)
+- [ ] Create "check your email" page
+- [ ] Create magic link email template
 - [ ] Protect routes with security firewall
 
 ### Phase 3: Core Task Management
@@ -310,19 +336,29 @@ TaskPark/
 
 ---
 
-## 9. Google OAuth Setup Instructions
+## 9. Magic Link Email Setup
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create new project or select existing
-3. Enable "Google+ API" or "Google Identity" API
-4. Go to Credentials → Create Credentials → OAuth 2.0 Client ID
-5. Application type: Web application
-6. Authorized redirect URI: `http://localhost:8000/connect/google/check`
-7. Copy Client ID and Client Secret to `.env`:
-   ```
-   GOOGLE_CLIENT_ID=your-client-id
-   GOOGLE_CLIENT_SECRET=your-client-secret
-   ```
+### Local Development (Mailpit)
+Mailpit is included in docker-compose.yml - catches all emails locally.
+- Web UI: http://localhost:8025
+- SMTP: localhost:1025
+
+### Production Options
+1. **SMTP Provider** (Mailgun, SendGrid, Amazon SES)
+2. **Native PHP mail** (not recommended)
+
+### Environment Variables
+```env
+# Local development (Mailpit)
+MAILER_DSN=smtp://localhost:1025
+
+# Production example (Mailgun)
+MAILER_DSN=mailgun+smtp://USERNAME:PASSWORD@default?region=eu
+
+# App settings
+APP_URL=http://localhost:8000
+MAGIC_LINK_EXPIRY_MINUTES=15
+```
 
 ---
 
@@ -335,8 +371,7 @@ cd TaskPark
 
 # Install required packages
 composer require webapp
-composer require knpuniversity/oauth2-client-bundle
-composer require league/oauth2-google
+composer require symfony/mailer
 composer require symfony/webpack-encore-bundle
 composer require symfony/ux-turbo
 composer require symfony/stimulus-bundle
@@ -346,14 +381,16 @@ npm install
 npm install -D tailwindcss postcss autoprefixer
 npx tailwindcss init
 
-# Database
-docker-compose up -d  # Start MariaDB
+# Database + Email (via Docker)
+docker-compose up -d  # Start MariaDB + Mailpit
 php bin/console doctrine:database:create
 php bin/console doctrine:migrations:migrate
 
 # Run development server
 symfony server:start
 npm run watch
+
+# View emails at http://localhost:8025 (Mailpit)
 ```
 
 ---
@@ -381,7 +418,7 @@ npm run watch
 
 | Decision | Choice |
 |----------|--------|
-| **SSO Provider** | TBD (GitHub OAuth or Auth0 recommended) |
+| **Authentication** | Magic Link (passwordless email) |
 | **Task fields** | Title only (for now) |
 | **Week start** | Monday (ISO standard) |
 | **Completed tasks** | Show with strikethrough |
@@ -407,4 +444,4 @@ Archived tasks move to an `archived_task` table (same structure) for potential r
 
 ---
 
-Ready to start implementation when SSO choice is confirmed!
+**Plan finalized! Ready to start implementation.**
