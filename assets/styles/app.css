@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+    --color-primary: #6366f1;
+    --color-primary-dark: #4f46e5;
+    --color-success: #10b981;
+    --color-success-dark: #059669;
+    --color-background: #f8fafc;
+    --color-surface: #ffffff;
+    --color-text: #334155;
+    --color-text-light: #64748b;
+    --color-accent: #f0abfc;
+    --color-danger: #ef4444;
+}
+
+body {
+    @apply bg-background text-text;
+}
+
+/* Strikethrough animation for completed tasks */
+.task-completed {
+    @apply line-through text-text-light;
+}
+
+/* Smooth transitions for interactive elements */
+.btn {
+    @apply transition-all duration-200 ease-in-out;
+}
+
+/* Focus styles for accessibility */
+*:focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
+}
